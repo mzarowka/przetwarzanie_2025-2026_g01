@@ -72,300 +72,394 @@ data_semi_1 <- dplyr::semi_join(data_1, data_2)
 data_anti_1 <- dplyr::anti_join(data_3, data_1)
 
 
-############################################################
-# Tytuł: dplyr joins & operacje zbiorów
-# Autor: Maurycy Żarczyński
-# Data: 2026-01-07
-############################################################
+# =============================================================================
+# ŁĄCZENIE RAMEK DANYCH W R (dplyr joins)
+# Materiały do zajęć z programowania w R
+# =============================================================================
 
-# ──────────────────────────────────────────────────────────
-# 1) Przygotowanie: pakiety + import danych
-# ──────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# PRZYGOTOWANIE ŚRODOWISKA
+# -----------------------------------------------------------------------------
 
-# tidyverse (w tym dplyr) + readxl do plików Excel
-library(tidyverse)
+# Ładowanie pakietów
+library(dplyr)
 library(readxl)
 
-# Ustal ścieżkę do pliku
-excel_path <- "dane/data_msu.xlsx"
+# -----------------------------------------------------------------------------
+# WCZYTANIE DANYCH
+# -----------------------------------------------------------------------------
 
-# Podgląd dostępnych arkuszy (pomocne na żywo)
-# Oczekiwane arkusze: "loi", "elemental", "bsi"
-readxl::excel_sheets(excel_path)
+# Wylistowanie dostępnych arkuszy w pliku Excel
+# Funkcja excel_sheets() zwraca wektor nazw wszystkich arkuszy 
+# w pliku .xlsx/.xls. Przydatne gdy nie znamy struktury pliku.
+# [ELI5] To jak spis treści w książce - pokazuje jakie "rozdziały" są w pliku.
 
+readxl::excel_sheets("dane/data_msu.xlsx")
 
-# Wczytanie ramek danych
-# Dane LOI, straty na prazeniu
-loi <- readxl::read_excel(excel_path, sheet = "loi")
+# Wczytanie trzech arkuszy jako osobne ramki danych
+data_loi <- readxl::read_excel("dane/data_msu.xlsx", sheet = "loi")
+data_elem <- readxl::read_excel("dane/data_msu.xlsx", sheet = "elemental")
+data_bsi <- readxl::read_excel("dane/data_msu.xlsx", sheet = "bsi")
 
-# Dane elementarne CNS
-elemental <- readxl::read_excel(excel_path, sheet = "elemental")
+# Podgląd danych (sprawdźmy co mamy)
+head(data_loi)
+head(data_elem)
+head(data_bsi)
 
-# Dane krzemionka biogeniczna
-bsi <- readxl::read_excel(excel_path, sheet = "bsi")
+# =============================================================================
+# CZĘŚĆ 1: JOINY MUTUJĄCE (MUTATING JOINS)
+# =============================================================================
 
-# Sprawdźmy nazwy kolumn i upewnijmy się, że mamy wspólny klucz 'sample_id'
-names(loi)
-names(elemental)
-names(bsi)
+# Joiny mutujące dodają kolumny z jednej ramki do drugiej na 
+# podstawie dopasowania kluczy. Wynikowa ramka ma więcej kolumn niż wejściowa.
+# [ELI5] To jak doklejanie nowych kartek do zeszytu - masz więcej informacji
+# o tych samych rzeczach.
 
-# Szybki test duplikatów klucza (ważne dla przewidywanego wyniku joinów)
-loi |>
-  dplyr::count(sample_id) |>
-  dplyr::filter(n > 1)
+# -----------------------------------------------------------------------------
+# LEFT JOIN - łączenie do lewej ramki
+# -----------------------------------------------------------------------------
 
-elemental |>
-  dplyr::count(sample_id) |>
-  dplyr::filter(n > 1)
+# left_join(x, y) zachowuje WSZYSTKIE wiersze z ramki x (lewej) 
+# i dołącza pasujące kolumny z ramki y. Jeśli w y nie ma dopasowania, 
+# wstawiane są wartości NA. Kolejność wierszy z x jest zachowana.
+# [ELI5] Masz listę uczniów (x) i chcesz dopisać ich oceny (y). Każdy uczeń 
+# zostaje na liście, nawet jeśli nie ma jeszcze oceny - wtedy wpisujesz "brak".
 
-bsi |>
-  dplyr::count(sample_id) |>
-  dplyr::filter(n > 1)
+# Podstawowy left_join - dplyr automatycznie szuka wspólnych kolumn
+dane_left_1 <- dplyr::left_join(x = data_loi, y = data_elem)
 
-# ──────────────────────────────────────────────────────────
-# 2) Mentalny model joinów
-# ──────────────────────────────────────────────────────────
-# Dwa zbiory ID: X (lewa tabela) i Y (prawa tabela)
-#
-# dplyr::left_join(X, Y):   zachowuje wszystkie wiersze z X; dołącza kolumny z Y
-#                   dla pasujących kluczy; brak dopasowań -> NA po stronie Y
-# dplyr::right_join(X, Y):  zachowuje wszystkie wiersze z Y; dołącza kolumny z X
-# dplyr::inner_join(X, Y):  tylko część wspólna (X ∩ Y)
-# dplyr::full_join(X, Y):   wszystko (X ∪ Y), z NA tam, gdzie brak dopasowania
-# dplyr::semi_join(X, Y):   filtruje X do wierszy mających dopasowanie w Y (tylko kolumny X)
-# dplyr::anti_join(X, Y):   filtruje X do wierszy bez dopasowania w Y (tylko kolumny X)
+# Sprawdźmy wymiary - ile wierszy i kolumn?
+dim(data_loi)
+dim(data_elem)
+dim(dane_left_1)
 
-# ──────────────────────────────────────────────────────────
-# 3) Joiny mutujące (dodają kolumny)
-# ──────────────────────────────────────────────────────────
+# Left join z inną ramką
+dane_left_2 <- dplyr::left_join(x = data_loi, y = data_bsi)
 
-# --- LEFT JOIN ---
-# Dla dorosłych: Zwraca wszystkie wiersze z lewego wejścia; dla kluczy z dopasowaniem
-#                dokleja kolumny z prawego. Braki po prawej -> NA.
-# ELI5:          Lewa tabela to lista główna; dla każdego ID szukamy w prawej.
-#                Jest? Dopisujemy szczegóły. Nie ma? Zostawiamy puste (NA).
-left_loi_elemental <- dplyr::left_join(
-  loi,
-  elemental,
+# -----------------------------------------------------------------------------
+# Jawne określenie klucza łączenia (join_by)
+# -----------------------------------------------------------------------------
+
+# Argument 'by' z funkcją join_by() pozwala explicite określić,
+# które kolumny mają być kluczem łączenia. To dobra praktyka - kod jest 
+# czytelniejszy i nie zależy od automatycznego wykrywania wspólnych nazw.
+# [ELI5] To jak powiedzenie: "Łącz kartki po numerze albumu, a nie zgaduj 
+# po czym je łączyć".
+
+dane_left_3 <- dplyr::left_join(
+  x = data_loi,
+  y = data_bsi,
+  by = dplyr::join_by(sample_id == sample_id)
+)
+
+# -----------------------------------------------------------------------------
+# Łączenie gdy kolumny mają różne nazwy
+# -----------------------------------------------------------------------------
+
+# Gdy kolumna-klucz ma inną nazwę w każdej ramce, używamy składni
+# join_by(kolumna_x == kolumna_y). Można też najpierw przemianować kolumnę
+# funkcją rename().
+# [ELI5] W jednym zeszycie piszesz "Imię", w drugim "Nazwa ucznia" - to to 
+# samo, tylko inaczej nazwane. Musisz powiedzieć R-owi, że to ta sama rzecz.
+
+# Najpierw przygotujmy ramkę z inną nazwą kolumny
+data_bsi_renamed <- dplyr::rename(data_bsi, nazwa_id = sample_id)
+
+# Teraz łączymy z różnymi nazwami kluczy
+dane_left_4 <- dplyr::left_join(
+  x = data_loi,
+  y = data_bsi_renamed,
+  by = dplyr::join_by(sample_id == nazwa_id)
+)
+
+# -----------------------------------------------------------------------------
+# Łączenie wielu ramek (bez użycia pipe)
+# -----------------------------------------------------------------------------
+
+# Gdy chcemy połączyć więcej niż dwie ramki, wykonujemy joiny 
+# sekwencyjnie - wynik pierwszego joina staje się wejściem dla drugiego.
+# Bez operatora pipe robimy to przez przypisanie do zmiennych pośrednich.
+# [ELI5] Najpierw sklejasz dwie kartki, potem do tej sklejonej doklejasz 
+# trzecią. Krok po kroku.
+
+# Krok 1: łączymy loi z elem
+dane_krok1 <- dplyr::left_join(
+  x = data_loi,
+  y = data_elem,
   by = dplyr::join_by(sample_id)
 )
+
+# Krok 2: do wyniku doklejamy bsi
+dane_kompletne <- dplyr::left_join(
+  x = dane_krok1,
+  y = data_bsi,
+  by = dplyr::join_by(sample_id)
+)
+
+# Sprawdźmy wynik
+dim(dane_kompletne)
+names(dane_kompletne)
+
+# -----------------------------------------------------------------------------
+# RIGHT JOIN - łączenie do prawej ramki
+# -----------------------------------------------------------------------------
+
+# right_join(x, y) to lustrzane odbicie left_join - zachowuje 
+# WSZYSTKIE wiersze z ramki y (prawej) i dołącza pasujące dane z x. 
+# W praktyce: right_join(a, b) == left_join(b, a), więc right_join używa 
+# się rzadziej.
+# [ELI5] Teraz lista ocen (y) jest ważniejsza - zostawiasz wszystkie oceny,
+# nawet jeśli nie wiesz czyje są. Brakujące imiona = NA.
+
+dane_right_1 <- dplyr::right_join(x = data_loi, y = data_elem)
+
+# Porównaj wymiary z left_join
+dim(dane_left_1)
+dim(dane_right_1)
+
+# Sekwencyjne right joiny
+dane_right_krok1 <- dplyr::right_join(
+  x = data_bsi,
+  y = data_loi,
+  by = dplyr::join_by(sample_id)
+)
+
+dane_right_krok2 <- dplyr::right_join(
+  x = dane_right_krok1,
+  y = data_elem,
+  by = dplyr::join_by(sample_id)
+)
+
+# -----------------------------------------------------------------------------
+# INNER JOIN - tylko wspólne obserwacje
+# -----------------------------------------------------------------------------
+
+# inner_join(x, y) zwraca TYLKO te wiersze, które mają dopasowanie
+# w OBU ramkach. To najbardziej restrykcyjny join - usuwa wszystkie wiersze
+# bez pełnego dopasowania. Liczba wierszy wyniku <= min(nrow(x), nrow(y)).
+# [ELI5] Zostawiasz tylko uczniów, którzy są ZARÓWNO na liście obecności 
+# JAK I mają wystawione oceny. Kto nie ma obu - odpada.
+
+dane_inner_1 <- dplyr::inner_join(x = data_loi, y = data_elem)
+
+# Porównanie liczby wierszy
+nrow(data_loi)
+nrow(data_elem)
+nrow(dane_inner_1)
+
+# Inner join z jawnym kluczem
+dane_inner_2 <- dplyr::inner_join(
+  x = data_loi,
+  y = data_bsi,
+  by = dplyr::join_by(sample_id)
+)
+
+# -----------------------------------------------------------------------------
+# FULL JOIN - wszystko ze wszystkim
+# -----------------------------------------------------------------------------
+
+# full_join(x, y) zachowuje WSZYSTKIE wiersze z OBU ramek. 
+# Gdzie nie ma dopasowania - wstawia NA. To najbardziej "zachowawczy" join,
+# nie traci żadnych danych. Liczba wierszy wyniku >= max(nrow(x), nrow(y)).
+# [ELI5] Robisz jedną wielką listę - wszyscy uczniowie i wszystkie oceny.
+# Nie wiesz czyja ocena? Wpisujesz NA przy imieniu. Nie ma oceny? NA przy ocenie.
+
+dane_full_1 <- dplyr::full_join(x = data_loi, y = data_elem)
+
+# Porównanie liczby wierszy
+nrow(data_loi)
+nrow(data_elem)
+nrow(dane_full_1)
+
+dane_full_2 <- dplyr::full_join(
+  x = data_loi,
+  y = data_bsi,
+  by = dplyr::join_by(sample_id)
+)
+
+# =============================================================================
+# CZĘŚĆ 2: JOINY FILTRUJĄCE (FILTERING JOINS)
+# =============================================================================
+
+# Joiny filtrujące NIE dodają kolumn - służą tylko do filtrowania
+# wierszy ramki x na podstawie tego, czy mają dopasowanie w y. Wynikowa 
+# ramka ma te same kolumny co x, ale potencjalnie mniej wierszy.
+# [ELI5] To jak filtr do kawy - nie dodajesz nic nowego, tylko wybierasz
+# które ziarna (wiersze) przepuścić, a które zatrzymać.
+
+# -----------------------------------------------------------------------------
+# SEMI JOIN - zostaw tylko pasujące
+# -----------------------------------------------------------------------------
+
+# semi_join(x, y) zwraca wiersze z x, które MAJĄ dopasowanie w y.
+# Działa jak filtr - sprawdza "czy ten wiersz z x ma odpowiednik w y?".
+# Jeśli tak - zostaje. Kolumny z y NIE są dodawane do wyniku.
+# [ELI5] Masz listę wszystkich uczniów (x) i listę obecności (y). 
+# Semi join daje ci listę uczniów którzy BYLI obecni - ale tylko ich imiona,
+# bez informacji z listy obecności.
+
+dane_semi_1 <- dplyr::semi_join(x = data_loi, y = data_elem)
+
+# Porównaj z oryginałem - te same kolumny, potencjalnie mniej wierszy
+names(data_loi)
+names(dane_semi_1)
+nrow(data_loi)
+nrow(dane_semi_1)
+
+# Semi join z jawnym kluczem
+dane_semi_2 <- dplyr::semi_join(
+  x = data_loi,
+  y = data_bsi,
+  by = dplyr::join_by(sample_id)
+)
+
+# -----------------------------------------------------------------------------
+# ANTI JOIN - zostaw tylko NIEpasujące
+# -----------------------------------------------------------------------------
+
+# anti_join(x, y) zwraca wiersze z x, które NIE MAJĄ dopasowania 
+# w y. To odwrotność semi_join. Przydatne do znajdowania "sierot" - rekordów
+# które powinny mieć dopasowanie, ale go nie mają (np. błędy w danych).
+# [ELI5] Z listy wszystkich uczniów (x) zostawiasz tylko tych, których 
+# NIE MA na liście obecności (y) - czyli wagarowiczów!
+
+dane_anti_1 <- dplyr::anti_join(x = data_bsi, y = data_loi)
+
+# Sprawdźmy kto "zaginął"
+print(dane_anti_1)
+
+# Anti join w drugą stronę - inne wyniki!
+dane_anti_2 <- dplyr::anti_join(x = data_loi, y = data_bsi)
+
+# Ile próbek z loi nie ma odpowiednika w bsi?
+nrow(dane_anti_2)
+
+# =============================================================================
+# CZĘŚĆ 3: OPERACJE ZBIOROWE (SET OPERATIONS)
+# =============================================================================
+
+# Operacje zbiorowe z dplyr działają na całych ramkach danych,
+# traktując każdy wiersz jako element zbioru. Wymagają IDENTYCZNYCH kolumn
+# (tych samych nazw i typów) w obu ramkach. Odpowiadają operacjom 
+# matematycznym na zbiorach: suma, przecięcie, różnica.
+# [ELI5] To jak zabawy z klockami dwóch kolorów. Możesz: wziąć wszystkie
+# klocki (union), tylko te które masz w obu kolorach (intersect), albo
+# tylko czerwone których nie masz w niebieskich (setdiff).
+
+# Przygotujmy dane demonstracyjne - dwie ramki z tymi samymi kolumnami
+# ale częściowo różnymi wierszami
+
+# Wybierzmy część próbek z data_loi
+zbior_A <- dplyr::filter(data_loi, sample_id %in% c("stl14-1b-01c-01 000.50", "stl14-1b-01c-01 037.50", "stl14-1b-01c-01 095.50", "stl14-1b-01c-01 106.50"))
+zbior_B <- dplyr::filter(data_loi, sample_id %in% c("stl14-1b-01c-01 095.50", "stl14-1b-01c-01 106.50", "stl14-1b-01c-01 114.00", "stl14-1b-01c-01 117.50"))
 
 # Podgląd
-dplyr::glimpse(left_loi_elemental)
+print(zbior_A)
+print(zbior_B)
 
-# Łańcuch kilku left_join i zarządzanie nakładającymi się nazwami (sufiksy):
-left_all <- loi |>
-  dplyr::left_join(elemental, by = dplyr::join_by(sample_id)) |>
-  dplyr::left_join(bsi, by = dplyr::join_by(sample_id), suffix = c("", ".bsi"))
+# -----------------------------------------------------------------------------
+# UNION - suma zbiorów (wszystkie unikalne wiersze)
+# -----------------------------------------------------------------------------
 
-# Uwaga: 'mass_mg' występuje w 'loi' i 'bsi'. Sufiks '.bsi' odróżnia kolumnę z prawej.
+# union(x, y) zwraca wszystkie unikalne wiersze występujące 
+# w x LUB w y (lub w obu). Duplikaty są usuwane. Odpowiada matematycznej
+# sumie zbiorów (A ∪ B).
+# [ELI5] Wrzucasz wszystkie klocki z obu pudełek do jednego, ale jeśli
+# masz dwa takie same - zostawiasz tylko jeden.
 
-# --- RIGHT JOIN ---
-# Dla dorosłych: Zwraca wszystkie wiersze z prawego wejścia; wzbogaca o kolumny z lewego.
-# ELI5:          Prawa tabela jest „listą nadrzędną”; dociągamy z lewej dane dla pasujących ID.
-right_loi_elemental <- dplyr::right_join(
-  loi,
-  elemental,
-  by = dplyr::join_by(sample_id)
-)
-dplyr::glimpse(right_loi_elemental)
+zbior_union <- dplyr::union(zbior_A, zbior_B)
 
-# --- INNER JOIN ---
-# Dla dorosłych: Przecięcie — tylko wiersze, których klucze istnieją w obu wejściach; bez nowych NA.
-# ELI5:          Zostają tylko te ID, które oba zbiory mają wspólne.
-inner_loi_elemental <- dplyr::inner_join(
-  loi,
-  elemental,
-  by = dplyr::join_by(sample_id)
-)
+nrow(zbior_A)
+nrow(zbior_B)
+nrow(zbior_union)
 
-# Podgląd
-dplyr::glimpse(inner_loi_elemental)
+print(zbior_union)
 
-# Kombinacja: najpierw inner, potem right (na bazie Twojego przykładu)
-inner_loi_bsi_then_right <- dplyr::inner_join(
-  loi,
-  bsi,
-  by = dplyr::join_by(sample_id)
-) |>
-  dplyr::right_join(elemental, by = dplyr::join_by(sample_id))
+# -----------------------------------------------------------------------------
+# UNION_ALL - suma z duplikatami
+# -----------------------------------------------------------------------------
 
-# Podgląd
-dplyr::glimpse(inner_loi_bsi_then_right)
+# union_all(x, y) łączy wszystkie wiersze z x i y BEZ usuwania
+# duplikatów. Szybsze niż union() gdy wiemy, że nie ma powtórzeń lub 
+# gdy chcemy je zachować.
+# [ELI5] Wrzucasz wszystkie klocki z obu pudełek - nawet jeśli masz 
+# dwa takie same, zostawiasz oba.
 
-# --- FULL JOIN ---
-# Dla dorosłych: Suma zbiorów kluczy — zachowuje wszystkie wiersze z obu tabel; braki uzupełnia NA.
-# ELI5:          Sklejamy obie listy tak, aby nikt „nie wypadł”; puste pola wstawiamy jako NA.
-full_loi_elemental <- dplyr::full_join(
-  loi,
-  elemental,
-  by = dplyr::join_by(sample_id)
-)
+zbior_union_all <- dplyr::union_all(zbior_A, zbior_B)
 
-# Podgląd
-dplyr::glimpse(full_loi_elemental)
+nrow(zbior_union_all)
 
-# ──────────────────────────────────────────────────────────
-# 4) Joiny filtrujące (nie dodają kolumn — tylko filtrują wiersze)
-# ──────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# INTERSECT - część wspólna
+# -----------------------------------------------------------------------------
 
-# --- SEMI JOIN ---
-# Dla dorosłych: Zwraca wiersze z X, których klucze mają co najmniej jedno dopasowanie w Y.
-#                Zwraca kolumny tylko z X.
-# ELI5:          Z lewej tabeli zostaw te wiersze, których ID występują w prawej.
-semi_loi_in_elemental <- dplyr::semi_join(
-  loi,
-  elemental,
-  by = dplyr::join_by(sample_id)
-)
+# intersect(x, y) zwraca tylko wiersze występujące ZARÓWNO w x 
+# JAK I w y. Odpowiada matematycznemu przecięciu zbiorów (A ∩ B).
+# [ELI5] Zostawiasz tylko te klocki, które masz w OBU pudełkach - 
+# takie same w czerwonym i niebieskim.
 
-# Podgląd
-dplyr::glimpse(semi_loi_in_elemental)
+zbior_intersect <- dplyr::intersect(zbior_A, zbior_B)
 
-# --- ANTI JOIN ---
-# Dla dorosłych: Zwraca wiersze z X, których klucze NIE mają dopasowania w Y.
-#                Zwraca kolumny tylko z X.
-# ELI5:          Z lewej tabeli zostaw te wiersze, których ID nie występują w prawej.
-anti_bsi_not_in_loi <- dplyr::anti_join(
-  bsi,
-  loi,
-  by = dplyr::join_by(sample_id)
-)
+print(zbior_intersect)
+nrow(zbior_intersect)
 
-# Podgląd
-dplyr::glimpse(anti_bsi_not_in_loi)
+# -----------------------------------------------------------------------------
+# SETDIFF - różnica zbiorów
+# -----------------------------------------------------------------------------
 
-# ──────────────────────────────────────────────────────────
-# 5) Operacje zbiorów (na kluczach) vs. joiny filtrujące
-# ──────────────────────────────────────────────────────────
-# Myśl: operacje zbiorów liczą relacje między zbiorami ID; joiny filtrujące
-# działają na całych wierszach X, bazując na obecności/nieobecności kluczy w Y.
+# setdiff(x, y) zwraca wiersze występujące w x, ale NIE w y.
+# Uwaga: kolejność argumentów ma znaczenie! setdiff(A,B) != setdiff(B,A).
+# Odpowiada matematycznej różnicy zbiorów (A \ B).
+# [ELI5] Z czerwonego pudełka wyrzucasz wszystkie klocki, które masz też
+# w niebieskim. Zostają tylko "czysto czerwone".
 
-# Zbuduj wektory ID dla przejrzystości
-ids_loi <- loi$sample_id
-ids_elemental <- elemental$sample_id
-ids_bsi <- bsi$sample_id
+# A minus B
+zbior_diff_AB <- dplyr::setdiff(zbior_A, zbior_B)
+print(zbior_diff_AB)
 
-# UNION: wszystkie unikalne ID z obu zbiorów (jak klucze full join)
-ids_union <- dplyr::union(ids_loi, ids_elemental) # unikalna suma
-ids_union_all <- dplyr::union_all(ids_loi, ids_elemental) # zachowuje duplikaty, jeśli były
-length(ids_union)
-length(ids_union_all)
+# B minus A - inny wynik!
+zbior_diff_BA <- dplyr::setdiff(zbior_B, zbior_A)
+print(zbior_diff_BA)
 
-# INTERSECT: ID wspólne (jak klucze inner join)
-ids_intersect <- dplyr::intersect(ids_loi, ids_elemental)
+# -----------------------------------------------------------------------------
+# SYMDIFF - różnica symetryczna (od dplyr 1.1.0)
+# -----------------------------------------------------------------------------
 
-# SETDIFF: ID w A, których nie ma w B (jak klucze anti join)
-ids_only_in_loi <- dplyr::setdiff(ids_loi, ids_elemental)
+# symdiff(x, y) zwraca wiersze występujące w x LUB w y, ale NIE 
+# w obu jednocześnie. To suma różnic: (A \ B) ∪ (B \ A). Odpowiada 
+# matematycznej różnicy symetrycznej (A △ B).
+# [ELI5] Zostawiasz tylko klocki "unikalne" - które masz TYLKO w jednym
+# pudełku, ale nie w obu.
 
-# Porównanie z joinami filtrującymi:
-# dplyr::semi_join(loi, elemental) -> wiersze 'loi' z ID obecnym w 'elemental' (≈ intersect na wierszach)
-# dplyr::anti_join(loi, elemental) -> wiersze 'loi' z ID NIEobecnym w 'elemental' (≈ setdiff na wierszach)
+zbior_symdiff <- dplyr::symdiff(zbior_A, zbior_B)
+print(zbior_symdiff)
 
-# ──────────────────────────────────────────────────────────
-# 6) Różne nazwy klucza & selekcja kolumn
-# ──────────────────────────────────────────────────────────
-
-# Przykład: chcemy pominąć 'mass_mg' z 'loi' i pokazać join na różnych nazwach kluczy.
-loi_no_mass <- dplyr::select(loi, -mass_mg)
-
-# Zmieniamy nazwę klucza w 'bsi', aby zademonstrować join_by z równaniem różnych nazw:
-bsi_renamed <- bsi |> dplyr::rename(sample_code = sample_id)
-
-# Łączenie po różnych nazwach kluczy:
-left_loi_bsi_renamed <- dplyr::left_join(
-  loi_no_mass,
-  bsi_renamed,
-  by = dplyr::join_by(sample_id == sample_code),
-  suffix = c("", ".bsi")
-)
-dplyr::glimpse(left_loi_bsi_renamed)
-
-# ──────────────────────────────────────────────────────────
-# 7) Diagnozy & dobre praktyki
-# ──────────────────────────────────────────────────────────
-
-# i) Sprawdź typy i unikalność kluczy
-loi |> dplyr::summarize(n_keys = dplyr::n_distinct(sample_id))
-elemental |> dplyr::summarize(n_keys = dplyr::n_distinct(sample_id))
-bsi |> dplyr::summarize(n_keys = dplyr::n_distinct(sample_id))
-
-# ii) Porównaj liczby wierszy — zrozumiesz, co robi każdy join
-dplyr::tibble(
-  rows_loi = nrow(loi),
-  rows_elemental = nrow(elemental),
-  rows_bsi = nrow(bsi),
-  rows_left = nrow(left_loi_elemental),
-  rows_right = nrow(right_loi_elemental),
-  rows_inner = nrow(inner_loi_elemental),
-  rows_full = nrow(full_loi_elemental),
-  rows_semi = nrow(semi_loi_in_elemental),
-  rows_anti = nrow(anti_bsi_not_in_loi)
+# Sprawdzenie - to to samo co union dwóch setdiff
+zbior_symdiff_manual <- dplyr::union(
+  dplyr::setdiff(zbior_A, zbior_B),
+  dplyr::setdiff(zbior_B, zbior_A)
 )
 
-# iii) Radzenie sobie z nakładającymi się nazwami kolumn: 'suffix', albo pre‑select/rename.
+# =============================================================================
+# PODSUMOWANIE - TABELA PORÓWNAWCZA
+# =============================================================================
 
-# iv) Szybki przegląd NA po joinie
-left_loi_elemental |> 
-  dplyr::summarize(dplyr::across(dplyr::everything(), ~ sum(is.na(.))))
-# Omów czy braki są spodziewane (np. nie każdy próbkowany dla każdej metody),
-# i jak podejść do imputacji vs. filtrowania.
+# MUTATING JOINS (dodają kolumny):
+# ---------------------------------
+# left_join(x, y)  - wszystkie wiersze z x + pasujące dane z y
+# right_join(x, y) - wszystkie wiersze z y + pasujące dane z x  
+# inner_join(x, y) - tylko wiersze z dopasowaniem w OBU ramkach
+# full_join(x, y)  - wszystkie wiersze z OBU ramek
 
-# ──────────────────────────────────────────────────────────
-# 8) Mini‑zadania (do live codingu)
-# ──────────────────────────────────────────────────────────
+# FILTERING JOINS (filtrują wiersze, nie dodają kolumn):
+# ------------------------------------------------------
+# semi_join(x, y)  - wiersze z x które MAJĄ dopasowanie w y
+# anti_join(x, y)  - wiersze z x które NIE MAJĄ dopasowania w y
 
-# A) Weź 'elemental' jako listę referencyjną; wzbogac ją o 'om_p' z 'loi' i 'bsi_p' z 'bsi'.
-#    Zachowaj obie kolumny 'mass_mg' (z sufiksami).
-exercise_A <- elemental |>
-  dplyr::left_join(
-    dplyr::select(loi, sample_id, om_p, mass_mg),
-    by = dplyr::join_by(sample_id)
-  ) |>
-  dplyr::left_join(
-    dplyr::select(bsi, sample_id, bsi_p, mass_mg),
-    by = dplyr::join_by(sample_id),
-    suffix = c("", ".bsi")
-  )
-dplyr::glimpse(exercise_A)
-
-# B) Próbki obecne w 'bsi', a nieobecne w 'loi' (dwa sposoby):
-exercise_B1 <- dplyr::anti_join(bsi, loi, by = dplyr::join_by(sample_id)) # join filtrujący
-exercise_B2 <- lubridate::setdiff(bsi$sample_id, loi$sample_id) # operacja zbioru na kluczach
-
-# C) „Ścisła część wspólna”: próbki zmierzone we WSZYSTKICH trzech metodach
-overlap_ids <- Reduce(
-  intersect,
-  list(loi$sample_id, elemental$sample_id, bsi$sample_id)
-)
-exercise_C <- loi |>
-  dplyr::filter(sample_id %in% overlap_ids) |>
-  dplyr::inner_join(elemental, by = dplyr::join_by(sample_id)) |>
-  dplyr::inner_join(bsi, by = dplyr::join_by(sample_id), suffix = c("", ".bsi"))
-
-# D) Bonus: pokaz zarządzania sufiksami, gdy występuje więcej niż jedna wspólna kolumna
-exercise_D <- dplyr::full_join(
-  loi,
-  bsi,
-  by = dplyr::join_by(sample_id),
-  suffix = c(".loi", ".bsi")
-)
-
-# ──────────────────────────────────────────────────────────
-# 9) Błyskawiczna ściąga (komentarze do każdego joinu)
-# ──────────────────────────────────────────────────────────
-# dplyr::left_join(X,Y):   Dla dorosłych → wszystkie z X + dopasowane z Y; braki w Y → NA
-#                   ELI5 → zostaw lewą listę; uzupełnij z prawej; puste gdy brak
-# dplyr::right_join(X,Y):  Dla dorosłych → wszystkie z Y + dopasowane z X; braki w X → NA
-#                   ELI5 → zostaw prawą listę; uzupełnij z lewej; puste gdy brak
-# dplyr::inner_join(X,Y):  Dla dorosłych → tylko wspólne klucze (X ∩ Y)
-#                   ELI5 → zostają ID, które obie tabele mają
-# dplyr::full_join(X,Y):   Dla dorosłych → suma kluczy (X ∪ Y) z NA tam, gdzie brak pary
-#                   ELI5 → nikt nie wypada; puste miejsca wstawiamy NA
-# dplyr::semi_join(X,Y):   Dla dorosłych → filtr X do kluczy obecnych w Y (tylko kolumny X)
-#                   ELI5 → zostaw wiersze z X, które są w Y
-# dplyr::anti_join(X,Y):   Dla dorosłych → filtr X do kluczy nieobecnych w Y (tylko kolumny X)
-#                   ELI5 → zostaw wiersze z X, których nie ma w Y
-# lubridate::intersect(A,B):   wspólne ID
-# lubridate::union(A,B):       ID w którymkolwiek zbiorze (unikalne); union_all zachowuje duplikaty
-# lubridate::setdiff(A,B):     ID występujące w A, których nie ma w B
+# SET OPERATIONS (wymagają identycznych kolumn):
+# ----------------------------------------------
+# union(x, y)      - wszystkie unikalne wiersze z x i y
+# union_all(x, y)  - wszystkie wiersze z x i y (z duplikatami)
+# intersect(x, y)  - wiersze wspólne dla x i y
+# setdiff(x, y)    - wiersze z x których nie ma w y
+# symdiff(x, y)    - wiersze występujące tylko w jednej ramce
