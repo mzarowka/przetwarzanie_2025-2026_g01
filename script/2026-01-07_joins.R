@@ -90,7 +90,7 @@ library(readxl)
 # -----------------------------------------------------------------------------
 
 # Wylistowanie dostępnych arkuszy w pliku Excel
-# Funkcja excel_sheets() zwraca wektor nazw wszystkich arkuszy 
+# Funkcja excel_sheets() zwraca wektor nazw wszystkich arkuszy
 # w pliku .xlsx/.xls. Przydatne gdy nie znamy struktury pliku.
 # [ELI5] To jak spis treści w książce - pokazuje jakie "rozdziały" są w pliku.
 
@@ -110,7 +110,7 @@ head(data_bsi)
 # CZĘŚĆ 1: JOINY MUTUJĄCE (MUTATING JOINS)
 # =============================================================================
 
-# Joiny mutujące dodają kolumny z jednej ramki do drugiej na 
+# Joiny mutujące dodają kolumny z jednej ramki do drugiej na
 # podstawie dopasowania kluczy. Wynikowa ramka ma więcej kolumn niż wejściowa.
 # [ELI5] To jak doklejanie nowych kartek do zeszytu - masz więcej informacji
 # o tych samych rzeczach.
@@ -119,10 +119,10 @@ head(data_bsi)
 # LEFT JOIN - łączenie do lewej ramki
 # -----------------------------------------------------------------------------
 
-# left_join(x, y) zachowuje WSZYSTKIE wiersze z ramki x (lewej) 
-# i dołącza pasujące kolumny z ramki y. Jeśli w y nie ma dopasowania, 
+# left_join(x, y) zachowuje WSZYSTKIE wiersze z ramki x (lewej)
+# i dołącza pasujące kolumny z ramki y. Jeśli w y nie ma dopasowania,
 # wstawiane są wartości NA. Kolejność wierszy z x jest zachowana.
-# [ELI5] Masz listę uczniów (x) i chcesz dopisać ich oceny (y). Każdy uczeń 
+# [ELI5] Masz listę uczniów (x) i chcesz dopisać ich oceny (y). Każdy uczeń
 # zostaje na liście, nawet jeśli nie ma jeszcze oceny - wtedy wpisujesz "brak".
 
 # Podstawowy left_join - dplyr automatycznie szuka wspólnych kolumn
@@ -141,9 +141,9 @@ dane_left_2 <- dplyr::left_join(x = data_loi, y = data_bsi)
 # -----------------------------------------------------------------------------
 
 # Argument 'by' z funkcją join_by() pozwala explicite określić,
-# które kolumny mają być kluczem łączenia. To dobra praktyka - kod jest 
+# które kolumny mają być kluczem łączenia. To dobra praktyka - kod jest
 # czytelniejszy i nie zależy od automatycznego wykrywania wspólnych nazw.
-# [ELI5] To jak powiedzenie: "Łącz kartki po numerze albumu, a nie zgaduj 
+# [ELI5] To jak powiedzenie: "Łącz kartki po numerze albumu, a nie zgaduj
 # po czym je łączyć".
 
 dane_left_3 <- dplyr::left_join(
@@ -159,7 +159,7 @@ dane_left_3 <- dplyr::left_join(
 # Gdy kolumna-klucz ma inną nazwę w każdej ramce, używamy składni
 # join_by(kolumna_x == kolumna_y). Można też najpierw przemianować kolumnę
 # funkcją rename().
-# [ELI5] W jednym zeszycie piszesz "Imię", w drugim "Nazwa ucznia" - to to 
+# [ELI5] W jednym zeszycie piszesz "Imię", w drugim "Nazwa ucznia" - to to
 # samo, tylko inaczej nazwane. Musisz powiedzieć R-owi, że to ta sama rzecz.
 
 # Najpierw przygotujmy ramkę z inną nazwą kolumny
@@ -176,10 +176,10 @@ dane_left_4 <- dplyr::left_join(
 # Łączenie wielu ramek (bez użycia pipe)
 # -----------------------------------------------------------------------------
 
-# Gdy chcemy połączyć więcej niż dwie ramki, wykonujemy joiny 
+# Gdy chcemy połączyć więcej niż dwie ramki, wykonujemy joiny
 # sekwencyjnie - wynik pierwszego joina staje się wejściem dla drugiego.
 # Bez operatora pipe robimy to przez przypisanie do zmiennych pośrednich.
-# [ELI5] Najpierw sklejasz dwie kartki, potem do tej sklejonej doklejasz 
+# [ELI5] Najpierw sklejasz dwie kartki, potem do tej sklejonej doklejasz
 # trzecią. Krok po kroku.
 
 # Krok 1: łączymy loi z elem
@@ -204,9 +204,9 @@ names(dane_kompletne)
 # RIGHT JOIN - łączenie do prawej ramki
 # -----------------------------------------------------------------------------
 
-# right_join(x, y) to lustrzane odbicie left_join - zachowuje 
-# WSZYSTKIE wiersze z ramki y (prawej) i dołącza pasujące dane z x. 
-# W praktyce: right_join(a, b) == left_join(b, a), więc right_join używa 
+# right_join(x, y) to lustrzane odbicie left_join - zachowuje
+# WSZYSTKIE wiersze z ramki y (prawej) i dołącza pasujące dane z x.
+# W praktyce: right_join(a, b) == left_join(b, a), więc right_join używa
 # się rzadziej.
 # [ELI5] Teraz lista ocen (y) jest ważniejsza - zostawiasz wszystkie oceny,
 # nawet jeśli nie wiesz czyje są. Brakujące imiona = NA.
@@ -237,7 +237,7 @@ dane_right_krok2 <- dplyr::right_join(
 # inner_join(x, y) zwraca TYLKO te wiersze, które mają dopasowanie
 # w OBU ramkach. To najbardziej restrykcyjny join - usuwa wszystkie wiersze
 # bez pełnego dopasowania. Liczba wierszy wyniku <= min(nrow(x), nrow(y)).
-# [ELI5] Zostawiasz tylko uczniów, którzy są ZARÓWNO na liście obecności 
+# [ELI5] Zostawiasz tylko uczniów, którzy są ZARÓWNO na liście obecności
 # JAK I mają wystawione oceny. Kto nie ma obu - odpada.
 
 dane_inner_1 <- dplyr::inner_join(x = data_loi, y = data_elem)
@@ -258,7 +258,7 @@ dane_inner_2 <- dplyr::inner_join(
 # FULL JOIN - wszystko ze wszystkim
 # -----------------------------------------------------------------------------
 
-# full_join(x, y) zachowuje WSZYSTKIE wiersze z OBU ramek. 
+# full_join(x, y) zachowuje WSZYSTKIE wiersze z OBU ramek.
 # Gdzie nie ma dopasowania - wstawia NA. To najbardziej "zachowawczy" join,
 # nie traci żadnych danych. Liczba wierszy wyniku >= max(nrow(x), nrow(y)).
 # [ELI5] Robisz jedną wielką listę - wszyscy uczniowie i wszystkie oceny.
@@ -282,7 +282,7 @@ dane_full_2 <- dplyr::full_join(
 # =============================================================================
 
 # Joiny filtrujące NIE dodają kolumn - służą tylko do filtrowania
-# wierszy ramki x na podstawie tego, czy mają dopasowanie w y. Wynikowa 
+# wierszy ramki x na podstawie tego, czy mają dopasowanie w y. Wynikowa
 # ramka ma te same kolumny co x, ale potencjalnie mniej wierszy.
 # [ELI5] To jak filtr do kawy - nie dodajesz nic nowego, tylko wybierasz
 # które ziarna (wiersze) przepuścić, a które zatrzymać.
@@ -294,7 +294,7 @@ dane_full_2 <- dplyr::full_join(
 # semi_join(x, y) zwraca wiersze z x, które MAJĄ dopasowanie w y.
 # Działa jak filtr - sprawdza "czy ten wiersz z x ma odpowiednik w y?".
 # Jeśli tak - zostaje. Kolumny z y NIE są dodawane do wyniku.
-# [ELI5] Masz listę wszystkich uczniów (x) i listę obecności (y). 
+# [ELI5] Masz listę wszystkich uczniów (x) i listę obecności (y).
 # Semi join daje ci listę uczniów którzy BYLI obecni - ale tylko ich imiona,
 # bez informacji z listy obecności.
 
@@ -317,10 +317,10 @@ dane_semi_2 <- dplyr::semi_join(
 # ANTI JOIN - zostaw tylko NIEpasujące
 # -----------------------------------------------------------------------------
 
-# anti_join(x, y) zwraca wiersze z x, które NIE MAJĄ dopasowania 
+# anti_join(x, y) zwraca wiersze z x, które NIE MAJĄ dopasowania
 # w y. To odwrotność semi_join. Przydatne do znajdowania "sierot" - rekordów
 # które powinny mieć dopasowanie, ale go nie mają (np. błędy w danych).
-# [ELI5] Z listy wszystkich uczniów (x) zostawiasz tylko tych, których 
+# [ELI5] Z listy wszystkich uczniów (x) zostawiasz tylko tych, których
 # NIE MA na liście obecności (y) - czyli wagarowiczów!
 
 dane_anti_1 <- dplyr::anti_join(x = data_bsi, y = data_loi)
@@ -340,7 +340,7 @@ nrow(dane_anti_2)
 
 # Operacje zbiorowe z dplyr działają na całych ramkach danych,
 # traktując każdy wiersz jako element zbioru. Wymagają IDENTYCZNYCH kolumn
-# (tych samych nazw i typów) w obu ramkach. Odpowiadają operacjom 
+# (tych samych nazw i typów) w obu ramkach. Odpowiadają operacjom
 # matematycznym na zbiorach: suma, przecięcie, różnica.
 # [ELI5] To jak zabawy z klockami dwóch kolorów. Możesz: wziąć wszystkie
 # klocki (union), tylko te które masz w obu kolorach (intersect), albo
@@ -350,8 +350,26 @@ nrow(dane_anti_2)
 # ale częściowo różnymi wierszami
 
 # Wybierzmy część próbek z data_loi
-zbior_A <- dplyr::filter(data_loi, sample_id %in% c("stl14-1b-01c-01 000.50", "stl14-1b-01c-01 037.50", "stl14-1b-01c-01 095.50", "stl14-1b-01c-01 106.50"))
-zbior_B <- dplyr::filter(data_loi, sample_id %in% c("stl14-1b-01c-01 095.50", "stl14-1b-01c-01 106.50", "stl14-1b-01c-01 114.00", "stl14-1b-01c-01 117.50"))
+zbior_A <- dplyr::filter(
+  data_loi,
+  sample_id %in%
+    c(
+      "stl14-1b-01c-01 000.50",
+      "stl14-1b-01c-01 037.50",
+      "stl14-1b-01c-01 095.50",
+      "stl14-1b-01c-01 106.50"
+    )
+)
+zbior_B <- dplyr::filter(
+  data_loi,
+  sample_id %in%
+    c(
+      "stl14-1b-01c-01 095.50",
+      "stl14-1b-01c-01 106.50",
+      "stl14-1b-01c-01 114.00",
+      "stl14-1b-01c-01 117.50"
+    )
+)
 
 # Podgląd
 print(zbior_A)
@@ -361,7 +379,7 @@ print(zbior_B)
 # UNION - suma zbiorów (wszystkie unikalne wiersze)
 # -----------------------------------------------------------------------------
 
-# union(x, y) zwraca wszystkie unikalne wiersze występujące 
+# union(x, y) zwraca wszystkie unikalne wiersze występujące
 # w x LUB w y (lub w obu). Duplikaty są usuwane. Odpowiada matematycznej
 # sumie zbiorów (A ∪ B).
 # [ELI5] Wrzucasz wszystkie klocki z obu pudełek do jednego, ale jeśli
@@ -380,9 +398,9 @@ print(zbior_union)
 # -----------------------------------------------------------------------------
 
 # union_all(x, y) łączy wszystkie wiersze z x i y BEZ usuwania
-# duplikatów. Szybsze niż union() gdy wiemy, że nie ma powtórzeń lub 
+# duplikatów. Szybsze niż union() gdy wiemy, że nie ma powtórzeń lub
 # gdy chcemy je zachować.
-# [ELI5] Wrzucasz wszystkie klocki z obu pudełek - nawet jeśli masz 
+# [ELI5] Wrzucasz wszystkie klocki z obu pudełek - nawet jeśli masz
 # dwa takie same, zostawiasz oba.
 
 zbior_union_all <- dplyr::union_all(zbior_A, zbior_B)
@@ -393,9 +411,9 @@ nrow(zbior_union_all)
 # INTERSECT - część wspólna
 # -----------------------------------------------------------------------------
 
-# intersect(x, y) zwraca tylko wiersze występujące ZARÓWNO w x 
+# intersect(x, y) zwraca tylko wiersze występujące ZARÓWNO w x
 # JAK I w y. Odpowiada matematycznemu przecięciu zbiorów (A ∩ B).
-# [ELI5] Zostawiasz tylko te klocki, które masz w OBU pudełkach - 
+# [ELI5] Zostawiasz tylko te klocki, które masz w OBU pudełkach -
 # takie same w czerwonym i niebieskim.
 
 zbior_intersect <- dplyr::intersect(zbior_A, zbior_B)
@@ -425,8 +443,8 @@ print(zbior_diff_BA)
 # SYMDIFF - różnica symetryczna (od dplyr 1.1.0)
 # -----------------------------------------------------------------------------
 
-# symdiff(x, y) zwraca wiersze występujące w x LUB w y, ale NIE 
-# w obu jednocześnie. To suma różnic: (A \ B) ∪ (B \ A). Odpowiada 
+# symdiff(x, y) zwraca wiersze występujące w x LUB w y, ale NIE
+# w obu jednocześnie. To suma różnic: (A \ B) ∪ (B \ A). Odpowiada
 # matematycznej różnicy symetrycznej (A △ B).
 # [ELI5] Zostawiasz tylko klocki "unikalne" - które masz TYLKO w jednym
 # pudełku, ale nie w obu.
@@ -447,7 +465,7 @@ zbior_symdiff_manual <- dplyr::union(
 # MUTATING JOINS (dodają kolumny):
 # ---------------------------------
 # left_join(x, y)  - wszystkie wiersze z x + pasujące dane z y
-# right_join(x, y) - wszystkie wiersze z y + pasujące dane z x  
+# right_join(x, y) - wszystkie wiersze z y + pasujące dane z x
 # inner_join(x, y) - tylko wiersze z dopasowaniem w OBU ramkach
 # full_join(x, y)  - wszystkie wiersze z OBU ramek
 
